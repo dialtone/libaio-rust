@@ -59,7 +59,7 @@ impl DirectFile {
                           libc::S_IRUSR | libc::S_IWUSR),
         };
 
-        let path = path.as_ref().as_os_str().to_bytes().unwrap();
+        let path = path.as_ref().as_os_str().to_str().unwrap();
         match retry(|| unsafe { libc::open(path.as_ptr() as *const i8, flags, mode) as isize }) {
             -1 => Err(io::Error::last_os_error()),
             fd => Ok(DirectFile { fd: FD(fd as i32), alignment: alignment }),
@@ -69,7 +69,7 @@ impl DirectFile {
     pub fn alignment(&self) -> usize { self.alignment }
 
     pub fn pread(&self, buf: &mut AlignedBuf, off: u64) -> io::Result<usize> {
-        let r = unsafe { ::libc::pread(self.fd.as_raw_fd(), buf.as_mut_ptr() as *mut c_void, buf.len() as u64, off as i64) };
+        let r = unsafe { ::libc::pread(self.fd.as_raw_fd(), buf.as_mut_ptr() as *mut c_void, buf.len(), off as i64) };
 
         if r < 0 {
             Err(io::Error::last_os_error())
@@ -82,7 +82,7 @@ impl DirectFile {
         let r = unsafe {
             ::libc::pwrite(self.fd.as_raw_fd(),
                            buf.as_ptr() as *const c_void,
-                           buf.len() as u64,
+                           buf.len(),
                            off as i64) };
 
         if r < 0 {

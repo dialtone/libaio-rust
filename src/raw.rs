@@ -5,6 +5,7 @@
 extern crate std;
 extern crate eventfd;
 extern crate chrono;
+extern crate nix;
 
 use std::io;
 use std::fmt::Debug;
@@ -136,7 +137,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
     #[doc(hidden)]
     pub fn get_evfd_stream(&mut self) -> io::Result<Receiver<u64>> {
         if self.evfd.is_none() {
-            match EventFD::new(0, 0) {
+            match EventFD::new(0, self::nix::sys::eventfd::EfdFlags::empty()) {
                 Err(e) => return Err(e),
                 Ok(evfd) => self.evfd = Some(evfd),
             }
@@ -269,7 +270,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         } else {
             let mut iov : Vec<_> = (0..buf.len())
                 .map(|b| aio::Struct_iovec { iov_base: buf[b].rdbuf().as_mut_ptr(),
-                                             iov_len: buf[b].rdbuf().len() as u64 })
+                                             iov_len: buf[b].rdbuf().len() })
                 .collect();
                 
             let iocb = Iocb {
@@ -312,7 +313,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         } else {
             let iov : Vec<_> = (0..bufv.len())
                 .map(|b| aio::Struct_iovec { iov_base: bufv[b].wrbuf().as_ptr() as *mut u8,
-                                             iov_len: bufv[b].wrbuf().len() as u64 })
+                                             iov_len: bufv[b].wrbuf().len() })
                 .collect();
 
             let iocb = Iocb {

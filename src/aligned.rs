@@ -1,7 +1,8 @@
 //! Aligned memory buffers for Direct IO.
-use std::rt::heap;
+extern crate aligned_alloc;
 use std::ptr;
 use std::slice;
+use std::mem;
 
 use buf::{RdBuf, WrBuf};
 
@@ -22,14 +23,6 @@ fn ispower2(n: usize) -> bool {
     (n & (n - 1)) == 0
 }
 
-unsafe fn realloc(ptr: *mut u8, oldsz: usize, sz: usize, align: usize) -> *mut u8 {
-    if heap::reallocate_inplace(ptr, oldsz, sz, align) >= sz {
-        ptr
-    } else {
-        heap::reallocate(ptr, oldsz, sz, align)
-    }
-}
-
 impl AlignedBuf {
     /// Allocate some uninitialized memory. No bytes are valid as a
     /// result of this. Returns `None` on allocation failure.
@@ -43,12 +36,12 @@ impl AlignedBuf {
         let sz = (size + align - 1) & !(align - 1);
         assert!(sz >= size);
         assert!(sz % align == 0);
-        let p = heap::allocate(sz, align);
+        let p = aligned_alloc::aligned_alloc(sz, align);
 
         if p.is_null() {
             None
         } else {
-            Some(AlignedBuf { buf: p, len: sz, valid: 0, align: align })
+            Some(AlignedBuf { buf: mem::transmute(p), len: sz, valid: 0, align: align })
         }
     }
 
@@ -84,65 +77,6 @@ impl AlignedBuf {
         }
     }
 
-    /// Extend a buffer to `size` bytes, leaving the added storage
-    /// uninitialized. Returns false if the allocation fails. `size`
-    /// is rounded up to the alignment.
-    pub unsafe fn extend_uninit(&mut self, size: usize) -> bool {
-        let sz = (size + self.align - 1) & (self.align - 1);
-
-        assert!(sz >= self.len);
-        if sz == self.len {
-            return true;
-        }
-
-        let p = realloc(self.buf, self.len, sz, self.align);
-        if p.is_null() {
-            return false;
-        }
-
-        self.buf = p;
-        self.len = sz;
-
-        true
-    }
-
-    /// Extend a buffer to `size` bytes, initializing the new storage
-    /// to 0s. `size` is rounded up to the alignment. Returns false if
-    /// the allocation failed.
-    pub fn extend(&mut self, size: usize) -> bool {
-        let origsz = self.len;
-
-        unsafe {
-            let ok = self.extend_uninit(size);
-
-            if ok && self.len > origsz {
-                ptr::write_bytes((self.buf as usize + origsz) as *mut u8, 0, self.len - origsz);
-                self.valid = self.len
-            };
-
-            ok
-        }
-    }
-
-    /// Shrink a buffer. `size` is rounded up to the alignment.
-    pub fn shrink(&mut self, size: usize) -> bool {
-        let sz = (size + self.align - 1) & (self.align - 1);
-        assert!(sz <= self.len);
-
-        unsafe {
-            let p = realloc(self.buf, self.len, sz, self.align);
-            let ok = !p.is_null();
-
-            if ok {
-                self.buf = p;
-                self.len = sz;
-                self.valid = sz;
-            };
-
-            ok
-        }
-    }
-
     pub fn as_slice(&self) -> &[u8] { self.wrbuf() }
     
     pub unsafe fn as_ptr(&self) -> *const u8 {
@@ -159,7 +93,7 @@ impl AlignedBuf {
 
 impl Drop for AlignedBuf {
     fn drop(&mut self) {
-        unsafe { heap::deallocate(self.buf, self.len, self.align) }
+        unsafe { aligned_alloc::aligned_free(mem::transmute(self.buf)) }
     }
 }
 
