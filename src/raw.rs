@@ -58,7 +58,7 @@ pub struct Iocontext<T: Send, Wb: WrBuf + Send, Rb: RdBuf + Send> {
 
     batch: Iobatch<T, Wb, Rb>,  // next batch to be submitted
 
-    evfd: Option<EventFD>,      // IO completion events
+    pub evfd: Option<EventFD>,  // IO completion events
 
     submitted: usize,           // number of submitted IO operations
 }
@@ -133,17 +133,18 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         }
     }
 
-    // XXX how to make crate-local?
-    #[doc(hidden)]
-    pub fn get_evfd_stream(&mut self) -> io::Result<Receiver<u64>> {
+    pub fn ensure_evfd(&mut self) -> io::Result<()> {
         if self.evfd.is_none() {
             match EventFD::new(0, self::nix::sys::eventfd::EfdFlags::empty()) {
                 Err(e) => return Err(e),
                 Ok(evfd) => self.evfd = Some(evfd),
             }
-
         }
+        Ok(())
+    }
 
+    pub fn get_evfd_stream(&mut self) -> io::Result<Receiver<u64>> {
+        try!(self.ensure_evfd());
         Ok(self.evfd.as_ref().unwrap().events())
     }
 
