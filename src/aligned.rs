@@ -19,6 +19,8 @@ pub struct AlignedBuf {
     valid: usize,               // length of valid/initialized memory
 }
 
+unsafe impl Send for AlignedBuf {}
+
 fn ispower2(n: usize) -> bool {
     (n & (n - 1)) == 0
 }
