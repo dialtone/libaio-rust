@@ -8,15 +8,15 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-eventfd= { git = "https://github.com/domsj/eventfd-rust", rev = "5984e220ad9603bb8f2c74080cc24990c05ff279" }
-libc="*"
-chrono = "*"
+eventfd = { git = "https://github.com/knutin/eventfd-rust.git" }
+libc = "*"
+chrono = "0.3.0"
 aligned_alloc = "*"
 
 [dependencies.nix]
-git = "https://github.com/domsj/nix"
-rev = "2fb6ef34e6ed5a96a77dd9b7cfee57f2dc129321"
+git = "https://github.com/nix-rust/nix"
 features = [ "eventfd" ]
+version = "0.8.0"
 
 [dev-dependencies]
 tempdir = "*"

@@ -14,7 +14,7 @@ use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::Receiver;
 use std::ptr;
 
-use self::chrono::duration::Duration;
+use self::chrono::Duration;
 
 use super::Offset;
 use self::eventfd::EventFD;
@@ -215,7 +215,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                         Ok(ev.res as usize)
                     };
                     let iocb = ev.data as *mut Iocb<T, Wb, Rb>;
-                    
+
                     self.submitted -= 1;
                     (self.batch.free_iocb(iocb).op, evres)
                 })
@@ -263,7 +263,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
             self.prep_iocb(iocb)
         }
     }
-        
+
     /// Queue up a preadv operation.
     pub fn preadv<F: AsRawFd>(&mut self, file: &F, mut buf: Vec<Rb>, off: Offset, tok: T) -> Result<(), (Vec<Rb>, T)> {
         if self.full() {
@@ -273,7 +273,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                 .map(|b| aio::Struct_iovec { iov_base: buf[b].rdbuf().as_mut_ptr(),
                                              iov_len: buf[b].rdbuf().len() })
                 .collect();
-                
+
             let iocb = Iocb {
                 iocb: aio::Struct_iocb {
                     aio_buf: iov.as_mut_ptr() as u64,
@@ -286,7 +286,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
             self.prep_iocb(iocb)
         }
     }
-        
+
     /// Queue up a pwrite operation.
     pub fn pwrite<F: AsRawFd>(&mut self, file: &F, buf: Wb, off: Offset, tok: T) -> Result<(), (Wb, T)> {
         if self.full() {
@@ -329,7 +329,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
             self.prep_iocb(iocb)
         }
     }
-        
+
     /// Queue up an fsync operation.
     pub fn fsync<F: AsRawFd>(&mut self, file: &F, tok: T) -> Result<(), T> {
         if self.full() {
@@ -429,8 +429,8 @@ mod test {
     extern crate std;
     extern crate tempdir;
     extern crate chrono;
-    
-    use super::chrono::duration::Duration;
+
+    use super::chrono::Duration;
     use super::{Iocontext,Iobatch,Iocb,IoOp};
     use super::super::aioabi as aio;
     use std::default::Default;
@@ -438,7 +438,7 @@ mod test {
     use std::fs::{File,OpenOptions};
     use std::iter;
     use self::tempdir::TempDir;
-    
+
     #[test]
     fn batch_simple() {
         let mut b : Iobatch<usize, Vec<u8>, Vec<u8>> = Iobatch::new(100);
