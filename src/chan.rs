@@ -8,7 +8,7 @@ use std::sync::mpsc::{Sender,SyncSender,Receiver,channel,sync_channel};
 use std::io;
 use std::thread;
 use std::os::unix::io::AsRawFd;
-use std::boxed::FnBox;
+//use std::boxed::FnBox;
 use buf::{RdBuf, WrBuf};
 
 use super::{FD, Offset};
@@ -32,7 +32,7 @@ pub type IoRes<T, Wb, Rb> = (io::Result<usize>, raw::IoOp<T, Wb, Rb>);
 ///
 /// OpTx is the sender size of a channel for submitting new IO
 /// operations.
-type Callback<T, Wb, Rb> = Box<FnBox(&mut raw::Iocontext<T, Wb, Rb>, &Sender<IoRes<T, Wb, Rb>>)>;
+type Callback<T, Wb, Rb> = Box<Fn(&mut raw::Iocontext<T, Wb, Rb>, &Sender<IoRes<T, Wb, Rb>>)>;
 type OpTx<T, Wb, Rb> = SyncSender<Callback<T,Wb,Rb>>;
 
 /// Channel-based AIO context.
@@ -92,7 +92,7 @@ impl<T : Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
     }
 
     fn sendhelper<F: AsRawFd>(&self, file: &F,
-                              func: FnBox(&mut raw::Iocontext<T, Wb, Rb>, FD) -> Result<(), raw::IoOp<T, Wb, Rb>>) {
+                              func: Fn(&mut raw::Iocontext<T, Wb, Rb>, FD) -> Result<(), raw::IoOp<T, Wb, Rb>>) {
         let fd = FD::new(file);
 
         self.optx.send(move |ctx: &mut raw::Iocontext<T, Wb, Rb>, restx: &Sender<IoRes<T, Wb, Rb>>| {
@@ -181,7 +181,7 @@ impl<T : Send, Wb : WrBuf + Send, Rb : RdBuf + Send> ChanWorker<T, Wb, Rb> {
     }
 
     fn worker(&mut self,
-              oprx: Receiver<FnBox(&mut raw::Iocontext<T, Wb, Rb>, &Sender<IoRes<T, Wb, Rb>>)>,
+              oprx: Receiver<Fn(&mut raw::Iocontext<T, Wb, Rb>, &Sender<IoRes<T, Wb, Rb>>)>,
               restx: Sender<IoRes<T, Wb, Rb>>,
               evfd: Receiver<u64>) {
         let mut closed = false;

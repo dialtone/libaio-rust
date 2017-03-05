@@ -2,51 +2,55 @@ extern crate std;
 
 use std::ops::{Index,IndexMut};
 
-enum Slot<T> {
-    Free(isize),                 // Index of next entry in freelist, -1 for none
+pub enum Slot<T> {
+    Free(usize),                 // Index of next entry in freelist, -1 for none
     Alloc(T),
 }
 
 /// Simple fixed size pool allocator.
 pub struct Pool<T> {
-    pool: Vec<Slot<T>>,
+    pub pool: Vec<Slot<T>>,
     freelist: isize,
     used: usize,
+    next: usize
 }
 
 impl<T> Pool<T> {
     /// Create a new pool with a given size.
     pub fn new(size: usize) -> Pool<T> {
         assert!(size > 0);
-        Pool { pool: (0..size).map(|i| Slot::Free((i as isize) - 1)).collect(),
+        Pool { pool: (1 .. size + 1).map(Slot::Free).collect(),
                freelist: (size - 1) as isize,
-               used: 0 }
+               used: 0,
+               next: 0 }
     }
 
     /// Allocate an index in the pool. Returns None if the Pool is all used.
     pub fn allocidx(&mut self, init: T) -> Result<usize, T> {
-        let idx = self.freelist;
-
-        if idx != -1 {
-            self.freelist = match self.pool[idx as usize] {
-                Slot::Free(fl) => fl,
-                _ => panic!("idx {} not free", idx),
-            };
-            self.pool[idx as usize] = Slot::Alloc(init);
-            self.used += 1;
-            Ok(idx as usize)
-        } else {
+        let idx = self.next;
+        if idx >= self.pool.len() {
             Err(init)
+        } else {
+            self.next = match self.pool[idx] {
+                Slot::Free(next) => next,
+                Slot::Alloc(_) => panic!("Pool slot already contains a value")
+            };
+            self.pool[idx] = Slot::Alloc(init);
+            self.used += 1;
+            Ok(idx)
         }
     }
 
     /// Free an index in the pool
     pub fn freeidx(&mut self, idx: usize) -> T {
         assert!(idx < self.pool.len());
-        self.freelist = idx as isize;
+        let next = self.next;
         self.used -= 1;
-        match std::mem::replace(&mut self.pool[idx], Slot::Free(self.freelist)) {
-            Slot::Alloc(v) => v,
+        match std::mem::replace(&mut self.pool[idx], Slot::Free(next)) {
+            Slot::Alloc(v) => {
+                self.next = idx;
+                v
+            },
             Slot::Free(_) => panic!("Freeing free entry {}", idx)
         }
     }
@@ -74,7 +78,7 @@ impl<T> Pool<T> {
 
 impl<T> Index<usize> for Pool<T> {
     type Output = T;
-    
+
     fn index(&self, idx: usize) -> &T {
         match self.pool[idx] {
             Slot::Free(_) => panic!("access free index {}", idx),
@@ -94,8 +98,17 @@ impl<T> IndexMut<usize> for Pool<T> {
 
 #[cfg(test)]
 mod test {
-    use super::Pool;
+    use super::{Pool, Slot};
 
+    fn print(p: &Pool<i32>) {
+        for (i, slot) in p.pool.iter().enumerate() {
+            match slot {
+                &Slot::Free(freelist) => println!("slot {} free {}", i, freelist),
+                &Slot::Alloc(v) => println!("slot {} value {:?}", i, v)
+            }
+        }
+    }
+    
     #[test]
     fn alloc() {
         let mut p = Pool::new(4);
@@ -117,6 +130,18 @@ mod test {
         assert!(p.avail() == 0);
         assert!(idx.is_err());
     }
+
+
+    #[test]
+    fn reuse_slot() {
+        let mut p = Pool::new(3);
+
+        assert_eq!(Ok(0), p.allocidx(1));
+        assert_eq!(1, p.freeidx(0));
+        assert_eq!(Ok(0), p.allocidx(2));
+        assert_eq!(2, p.freeidx(0));
+    }
+
 
     #[test]
     fn free() {
@@ -196,7 +221,7 @@ mod test {
         let mut p = Pool::new(4);
 
         p[0] = 1;
-    }    
+    }
 
     #[test]
     #[should_panic]
@@ -207,7 +232,7 @@ mod test {
         assert!(idx.is_ok());
 
         p[idx.ok().unwrap() + 1] = 1;
-    }    
+    }
 
     #[test]
     #[should_panic]
@@ -218,7 +243,7 @@ mod test {
         assert!(idx.is_ok());
 
         p[idx.ok().unwrap() - 1] = 1;
-    }    
+    }
 
     #[test]
     #[should_panic]
@@ -230,7 +255,7 @@ mod test {
         assert!(idx.is_ok());
 
         unsafe { p.freeptr(&foo as *const isize) };
-    }    
+    }
 
     #[test]
     #[should_panic]
@@ -244,5 +269,5 @@ mod test {
             let ptr = ((&p[0] as *const isize as usize) - 256) as *const isize;
             p.freeptr(ptr)
         };
-    }    
+    }
 }

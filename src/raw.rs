@@ -19,6 +19,7 @@ use self::chrono::Duration;
 use super::Offset;
 use self::eventfd::EventFD;
 use pool::Pool;
+use slab::Slab;
 
 #[allow(dead_code)]
 use aioabi as aio;
@@ -405,7 +406,6 @@ impl<T, Wb : WrBuf, Rb : RdBuf> Iobatch<T, Wb, Rb> {
 
     // Allocate a new Iocb and also add the aio::Struct_iocb onto the current batch
     fn alloc_iocb(&mut self, init: Iocb<T, Wb, Rb>) -> Result<*mut Iocb<T, Wb, Rb>, Iocb<T, Wb, Rb>> {
-
         match self.iocb.allocidx(init) {
             Err(v) => Err(v),
             Ok(idx) => unsafe {
@@ -437,7 +437,10 @@ mod test {
     use std::cmp::min;
     use std::fs::{File,OpenOptions};
     use std::iter;
+    use std::io::Write;
     use self::tempdir::TempDir;
+
+    use pool::Slot;
 
     #[test]
     fn batch_simple() {
@@ -510,17 +513,60 @@ mod test {
                 Ok(res) => for &(ref op, ref r) in res.iter() {
                     match r {
                         &Err(ref e) => println!("{:?} failed {:?}", op, e),
-                        &Ok(res) => { println!("complete {:?} {:?}", op, res);
-                                      match op {
-                                          &IoOp::Pread(_, Op::R) => assert_eq!(res, 100),
-                                          &IoOp::Pwrite(_, Op::W) => assert_eq!(res, 40),
-                                          _ => panic!("unexpected {:?}", op)
-                                      }
+                        &Ok(res) => {
+                            match op {
+                                &IoOp::Pread(_, Op::R) => assert_eq!(res, 100),
+                                &IoOp::Pwrite(_, Op::W) => assert_eq!(res, 40),
+                                _ => panic!("unexpected {:?}", op)
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    #[test]
+    fn multiple() {
+        let mut io: Iocontext<i32, Vec<u8>, Vec<u8>> = match Iocontext::new(100) {
+            Err(e) => panic!("iocontext new {:?}", e),
+            Ok(io) => io
+        };
+
+
+        let mut file = tmpfile("foo");
+        let bytes: Vec<u8> = iter::repeat(0 as u8).take(100).collect();
+        file.write_all(&bytes).expect("Could not write to test file");
+
+
+
+        let rbuf1: Vec<_> = iter::repeat(0 as u8).take(10).collect();
+        let rbuf2: Vec<_> = iter::repeat(0 as u8).take(10).collect();
+        let rbuf3: Vec<_> = iter::repeat(0 as u8).take(10).collect();
+
+        assert!(io.pread(&file, rbuf1, 0, 1).is_ok());
+
+
+
+        assert!(io.submit().is_ok());
+        assert!(io.results(1, 10, Some(Duration::seconds(1))).is_ok());
+
+
+        for (i, slot) in io.batch.iocb.pool.iter().enumerate() {
+            match slot {
+                &Slot::Free(freelist) => println!("slot {} free {}", i, freelist),
+                &Slot::Alloc(_) => println!("slot {} not free", i)
+            }
+        }
+
+
+        assert!(io.pread(&file, rbuf2, 0, 2).is_ok());
+        assert!(io.pread(&file, rbuf3, 0, 3).is_ok());
+
+        assert!(io.submit().is_ok());
+        assert!(io.submit().is_ok());
+
+
     }
 
     #[test]

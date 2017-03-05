@@ -1,7 +1,9 @@
 extern crate libc;
+extern crate slab;
 
 pub use buf::{RdBuf,WrBuf};
 use std::os::unix::io::{RawFd, AsRawFd};
+
 
 mod aioabi;
 mod buf;

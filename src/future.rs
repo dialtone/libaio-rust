@@ -3,10 +3,9 @@
 //! This module represents pending AIO as a Future of the IO result.
 extern crate std;
 
-use std::comm;
-use std::sync::Future;
+use future::Future;
 use std::io;
-use std::os::unix::AsRawFd;
+use std::os::unix::io::AsRawFd;
 
 use buf::{RdBuf, WrBuf};
 use raw;
