@@ -246,16 +246,16 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
     }
 
     /// Queue up a pread operation.
-    pub fn pread<F: AsRawFd>(&mut self, file: &F, mut buf: Rb, off: Offset, tok: T) -> Result<(), (Rb, T)> {
+    pub fn pread<F: AsRawFd>(&mut self, file: &F, mut buf: Rb, off: Offset, len: usize, tok: T) -> Result<(), (Rb, T)> {
         if self.full() {
             Err((buf, tok))
         } else {
+            assert!(buf.rdbuf().len() >= len);
             let bufptr = buf.rdbuf().as_ptr();
-            let buflen = buf.rdbuf().len();
             let iocb = Iocb {
                 iocb: aio::Struct_iocb {
                     aio_buf: bufptr as u64,
-                    aio_count: buflen as u64,
+                    aio_count: len as u64,
 
                     .. self.pack_iocb(aio::Iocmd::IO_CMD_PREAD, file, off)
                 },
@@ -491,7 +491,7 @@ mod test {
         assert_eq!(io.submitted(), 0);
         assert_eq!(io.pending(), 1);
 
-        let ok = io.pread(&file, rbuf, 0, Op::R).is_ok();
+        let ok = io.pread(&file, rbuf, 0, 100, Op::R).is_ok();
         assert!(ok);
         assert_eq!(io.batched(), 2);
         assert_eq!(io.submitted(), 0);
@@ -544,7 +544,7 @@ mod test {
         let rbuf2: Vec<_> = iter::repeat(0 as u8).take(10).collect();
         let rbuf3: Vec<_> = iter::repeat(0 as u8).take(10).collect();
 
-        assert!(io.pread(&file, rbuf1, 0, 1).is_ok());
+        assert!(io.pread(&file, rbuf1, 0, 10, 1).is_ok());
 
 
 
@@ -560,8 +560,8 @@ mod test {
         }
 
 
-        assert!(io.pread(&file, rbuf2, 0, 2).is_ok());
-        assert!(io.pread(&file, rbuf3, 0, 3).is_ok());
+        assert!(io.pread(&file, rbuf2, 0, 10, 2).is_ok());
+        assert!(io.pread(&file, rbuf3, 0, 10, 3).is_ok());
 
         assert!(io.submit().is_ok());
         assert!(io.submit().is_ok());
@@ -624,7 +624,7 @@ mod test {
             assert_eq!(0, io.submitted());
 
             let full = io.full();
-            let p = io.pread(&file, rbuf, 0, 9);
+            let p = io.pread(&file, rbuf, 0, 100, 9);
             assert_eq!(i < 10, p.is_ok());
             assert_eq!(full, p.is_err());
         }
