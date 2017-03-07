@@ -252,7 +252,6 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         } else {
             assert!(buf.rdbuf().len() >= len);
             let bufptr = buf.rdbuf().as_ptr();
-            println!("pread off {} len {} buflen {}", off, len, buf.rdbuf().len());
             let iocb = Iocb {
                 iocb: aio::Struct_iocb {
                     aio_buf: bufptr as u64,
