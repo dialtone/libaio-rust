@@ -12,7 +12,7 @@ eventfd = { git = "https://github.com/knutin/eventfd-rust.git" }
 libc = "*"
 chrono = "0.3.0"
 aligned_alloc = "*"
-futures = "0.1"
+futures = "0.1.11"
 slab = "0.3.0"
 
 [dependencies.nix]
