@@ -1,5 +1,5 @@
 extern crate libc;
-extern crate slab;
+extern crate bytes;
 
 pub use buf::{RdBuf,WrBuf};
 use std::os::unix::io::{RawFd, AsRawFd};

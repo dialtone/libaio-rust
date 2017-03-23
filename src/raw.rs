@@ -19,7 +19,6 @@ use self::chrono::Duration;
 use super::Offset;
 use self::eventfd::EventFD;
 use pool::Pool;
-use slab::Slab;
 
 #[allow(dead_code)]
 use aioabi as aio;

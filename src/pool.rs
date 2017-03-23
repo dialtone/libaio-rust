@@ -108,7 +108,7 @@ mod test {
             }
         }
     }
-    
+
     #[test]
     fn alloc() {
         let mut p = Pool::new(4);

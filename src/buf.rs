@@ -1,5 +1,8 @@
 extern crate std;
 
+use bytes::BytesMut;
+
+
 /// Trait for types implementing a read buffer.
 pub trait RdBuf {
     /// Return a mutable u8 slice into some storage which need not be initialized.
@@ -42,6 +45,25 @@ impl RdBuf for Vec<u8> {
 impl WrBuf for Vec<u8> {
     fn wrbuf(&self) -> &[u8] { self.as_slice() }
 }
+
+
+impl RdBuf for BytesMut {
+    fn rdbuf(&mut self) -> &mut [u8] {
+        self
+    }
+
+    fn rdupdate(&mut self, base: usize, len: usize) {
+        unsafe { self.set_len(base+len) };
+    }
+
+}
+
+impl WrBuf for BytesMut {
+    fn wrbuf(&self) -> &[u8] { self }
+
+}
+
+
 /*
 impl<T : RdBuf> RdBuf for Box<T> {
     fn rdbuf(&mut self) -> &mut [u8] { (*self).rdbuf() }
