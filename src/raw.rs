@@ -249,6 +249,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         if self.full() {
             Err((buf, tok))
         } else {
+            trace!("buf.rdbuf().len() {}", buf.rdbuf().len());
             assert!(buf.rdbuf().len() >= len);
             let bufptr = buf.rdbuf().as_ptr();
             let iocb = Iocb {
