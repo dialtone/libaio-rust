@@ -22,11 +22,12 @@ pub type Offset = u64;
 #[derive(Debug)]
 pub struct FD(RawFd);
 
-/*
+
 impl FD {
     fn new<F: AsRawFd>(file: &F) -> FD { FD(file.as_raw_fd()) }
 }
- */
+
+
 
 impl AsRawFd for FD {
     fn as_raw_fd(&self) -> RawFd {
