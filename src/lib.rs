@@ -24,7 +24,7 @@ pub struct FD(RawFd);
 
 
 impl FD {
-    fn new<F: AsRawFd>(file: &F) -> FD { FD(file.as_raw_fd()) }
+    pub fn new<F: AsRawFd>(file: &F) -> FD { FD(file.as_raw_fd()) }
 }
 
 
