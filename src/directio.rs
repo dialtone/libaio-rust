@@ -13,7 +13,7 @@ use directio::FileAccess::*;
 use super::FD;
 use aligned::AlignedBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DirectFile {
     fd: FD,
     alignment: usize,
