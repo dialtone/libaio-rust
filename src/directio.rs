@@ -1,17 +1,14 @@
 //! Opening files with DirectIO and managing DirectIO buffers
-extern crate std;
-extern crate libc;
-
-use libc::{c_void};
+use libc::{c_uint, c_void};
 
 use std::path::Path;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::io;
-use directio::Mode::*;
-use directio::FileAccess::*;
 
 use super::FD;
-use aligned::AlignedBuf;
+use crate::aligned::AlignedBuf;
+use Mode::*;
+use FileAccess::*;
 
 #[derive(Debug)]
 pub struct DirectFile {
@@ -61,7 +58,7 @@ impl DirectFile {
         };
 
         let path = path.as_ref().as_os_str().to_str().unwrap();
-        match retry(|| unsafe { libc::open(path.as_ptr() as *const i8, flags, mode) as isize }) {
+        match retry(|| unsafe { libc::open(path.as_ptr() as *const i8, flags, mode as c_uint) as isize }) {
             -1 => Err(io::Error::last_os_error()),
             fd => Ok(DirectFile { fd: FD(fd as i32), alignment: alignment }),
         }
@@ -100,19 +97,16 @@ impl AsRawFd for DirectFile {
 
 #[cfg(test)]
 mod test {
-    extern crate tempdir;
-    
     use std::path::Path;
     use super::DirectFile;
     use super::Mode::*;
     use super::FileAccess::*;
-    use aligned::AlignedBuf;
-    use self::tempdir::TempDir;
-    
-    fn tmpfile(name: &str) -> DirectFile {
-        let tmp = TempDir::new_in(&Path::new("."), "test").unwrap();
-        let mut path = tmp.into_path();
+    use crate::aligned::AlignedBuf;
+    use tempdir::TempDir;
 
+    fn tmpfile(name: &str) -> DirectFile {
+        let tmp = TempDir::new("test").unwrap();
+        let mut path = tmp.into_path();
         path.push(name);
         DirectFile::open(&path, Truncate, ReadWrite, 4096).unwrap()
     }
@@ -124,7 +118,7 @@ mod test {
             None => panic!("buf alloc"),
             Some(b) => b
         };
-        
+
         match file.pwrite(&data, 0) {
             Ok(_) => (),
             Err(e) => panic!("write error {}", e)

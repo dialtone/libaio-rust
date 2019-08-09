@@ -1,8 +1,5 @@
 #![allow(dead_code)]
-extern crate std;
-extern crate libc;
-
-use libc::{uint16_t, uint32_t, uint64_t, int64_t, c_long, c_int, size_t};
+use libc::{c_long, c_int, size_t};
 pub use libc::timespec;
 use std::mem::zeroed;
 use std::default::Default;
@@ -12,31 +9,31 @@ use std::default::Default;
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct Struct_iocb {
-    pub data: uint64_t,             // ends up in io_event.data
+    pub data: u64,             // ends up in io_event.data
 
-    pub key: uint32_t,
-    pub aio_reserved1: uint32_t,
+    pub key: u32,
+    pub aio_reserved1: u32,
 
-    pub aio_lio_opcode: uint16_t,
-    pub aio_reqprio: uint16_t,
-    pub aio_fildes: uint32_t,
+    pub aio_lio_opcode: u16,
+    pub aio_reqprio: u16,
+    pub aio_fildes: u32,
 
     // PREAD/PWRITE -> void *
     // PREADV/PWRITEV -> iovec
-    pub aio_buf: uint64_t,
-    pub aio_count: uint64_t,        // bytes or iovec entries
-    pub aio_offset: uint64_t,
+    pub aio_buf: u64,
+    pub aio_count: u64,        // bytes or iovec entries
+    pub aio_offset: u64,
 
-    pub aio_reserved2: uint64_t,
+    pub aio_reserved2: u64,
 
-    pub aio_flags: uint32_t,
+    pub aio_flags: u32,
 
-    pub aio_resfd: uint32_t,
+    pub aio_resfd: u32,
 }
 
 impl Default for Struct_iocb {
     fn default() -> Struct_iocb {
-        Struct_iocb { aio_lio_opcode: Iocmd::IO_CMD_NOOP as u16,
+        Struct_iocb { aio_lio_opcode: Iocmd::IoCmdNoop as u16,
                       aio_fildes: (-1_i32) as u32,
                       .. unsafe { zeroed() }
         }
@@ -45,15 +42,15 @@ impl Default for Struct_iocb {
 
 #[repr(C)]
 pub enum Iocmd {
-    IO_CMD_PREAD = 0,
-    IO_CMD_PWRITE = 1,
-    IO_CMD_FSYNC = 2,
-    IO_CMD_FDSYNC = 3,
+    IoCmdPread = 0,
+    IoCmdPwrite = 1,
+    IoCmdFsync = 2,
+    IoCmdFdsync = 3,
     // IOCB_CMD_PREADX = 4,
     // IOCB_CMD_POLL = 5,
-    IO_CMD_NOOP = 6,
-    IO_CMD_PREADV = 7,
-    IO_CMD_PWRITEV = 8,
+    IoCmdNoop = 6,
+    IoCmdPreadv = 7,
+    IoCmdPwritev = 8,
 }
 
 pub const IOCB_FLAG_RESFD : u32 = 1 << 0;
@@ -61,10 +58,10 @@ pub const IOCB_FLAG_RESFD : u32 = 1 << 0;
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct Struct_io_event {
-    pub data: uint64_t,
-    pub obj: uint64_t,
-    pub res: int64_t,
-    pub res2: int64_t,
+    pub data: u64,
+    pub obj: u64,
+    pub res: i64,
+    pub res2: i64,
 }
 
 impl Default for Struct_io_event {

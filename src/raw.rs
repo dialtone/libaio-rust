@@ -1,12 +1,6 @@
 //! Raw interface to Async IO. This API is a thin layer on top of the
 //! underlying libaio/kernel syscalls, and is intended as the building
 //! block for easier to use interfaces.
-
-extern crate std;
-extern crate eventfd;
-extern crate chrono;
-extern crate nix;
-
 use std::io;
 use std::fmt::Debug;
 use std::default::Default;
@@ -14,16 +8,16 @@ use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::Receiver;
 use std::ptr;
 
-use self::chrono::Duration;
+use chrono::Duration;
 
 use super::Offset;
-use self::eventfd::EventFD;
-use pool::Pool;
+use eventfd::EventFD;
+use crate::pool::Pool;
 
 #[allow(dead_code)]
-use aioabi as aio;
+use crate::aioabi as aio;
 
-use buf::{RdBuf, WrBuf};
+use crate::buf::{RdBuf, WrBuf};
 
 struct Iocontextwrap {
     ctx: aio::io_context_t,
@@ -135,7 +129,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
 
     pub fn ensure_evfd(&mut self) -> io::Result<()> {
         if self.evfd.is_none() {
-            match EventFD::new(0, self::nix::sys::eventfd::EfdFlags::empty()) {
+            match EventFD::new(0, nix::sys::eventfd::EfdFlags::empty()) {
                 Err(e) => return Err(e),
                 Ok(evfd) => self.evfd = Some(evfd),
             }
@@ -144,14 +138,14 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
     }
 
     pub fn get_evfd_stream(&mut self) -> io::Result<Receiver<u64>> {
-        try!(self.ensure_evfd());
+        self.ensure_evfd()?;
         Ok(self.evfd.as_ref().unwrap().events())
     }
 
     /// Submit all outstanding IO operations. Returns number of submitted operations.
     pub fn submit(&mut self) -> io::Result<usize> {
         // Get the current batch and clear out the new one
-        let mut iocbp = self.batch.batch();
+        let iocbp = self.batch.batch();
 
         if iocbp.len() == 0 {
             Ok(0)
@@ -256,7 +250,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                     aio_buf: bufptr as u64,
                     aio_count: len as u64,
 
-                    .. self.pack_iocb(aio::Iocmd::IO_CMD_PREAD, file, off)
+                    .. self.pack_iocb(aio::Iocmd::IoCmdPread, file, off)
                 },
                 op: IoOp::Pread(buf, tok),
             };
@@ -279,7 +273,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                     aio_buf: iov.as_mut_ptr() as u64,
                     aio_count: iov.len() as u64,
 
-                    .. self.pack_iocb(aio::Iocmd::IO_CMD_PREADV, file, off)
+                    .. self.pack_iocb(aio::Iocmd::IoCmdPreadv, file, off)
                 },
                 op: IoOp::Preadv(buf, tok),
             };
@@ -299,7 +293,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                     aio_buf: bufptr as u64,
                     aio_count: buflen as u64,
 
-                    .. self.pack_iocb(aio::Iocmd::IO_CMD_PWRITE, file, off)
+                    .. self.pack_iocb(aio::Iocmd::IoCmdPwrite, file, off)
                 },
                 op: IoOp::Pwrite(buf, tok),
             };
@@ -322,7 +316,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
                     aio_buf: iov.as_ptr() as u64,
                     aio_count: iov.len() as u64,
 
-                    .. self.pack_iocb(aio::Iocmd::IO_CMD_PWRITEV, file, off)
+                    .. self.pack_iocb(aio::Iocmd::IoCmdPwritev, file, off)
                 },
                 op: IoOp::Pwritev(bufv, tok),
             };
@@ -336,7 +330,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
             Err(tok)
         } else {
             let iocb = Iocb {
-                iocb: self.pack_iocb(aio::Iocmd::IO_CMD_FSYNC, file, 0),
+                iocb: self.pack_iocb(aio::Iocmd::IoCmdFsync, file, 0),
                 op: IoOp::Fsync(tok),
             };
             self.prep_iocb(iocb)
@@ -349,7 +343,7 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
             Err(tok)
         } else {
             let iocb = Iocb {
-                iocb: self.pack_iocb(aio::Iocmd::IO_CMD_FDSYNC, file, 0),
+                iocb: self.pack_iocb(aio::Iocmd::IoCmdFdsync, file, 0),
                 op: IoOp::Fdsync(tok),
             };
             self.prep_iocb(iocb)
@@ -425,21 +419,17 @@ impl<T, Wb : WrBuf, Rb : RdBuf> Iobatch<T, Wb, Rb> {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-    extern crate tempdir;
-    extern crate chrono;
-
-    use super::chrono::Duration;
+    use chrono::Duration;
     use super::{Iocontext,Iobatch,Iocb,IoOp};
-    use super::super::aioabi as aio;
+    use crate::aioabi as aio;
     use std::default::Default;
     use std::cmp::min;
     use std::fs::{File,OpenOptions};
     use std::iter;
     use std::io::Write;
-    use self::tempdir::TempDir;
+    use tempdir::TempDir;
 
-    use pool::Slot;
+    use crate::pool::Slot;
 
     #[test]
     fn batch_simple() {
@@ -483,7 +473,6 @@ mod test {
         assert_eq!(io.pending(), 0);
 
         let file = tmpfile("foo");
-
         let ok = io.pwrite(&file, wbuf, 77, Op::W).is_ok();
         assert!(ok);
         assert_eq!(io.batched(), 1);
@@ -574,7 +563,7 @@ mod test {
             Err(e) => panic!("iocontext new {:?}", e),
             Ok(io) => io
         };
-        let wbufs = vec!["foo","bar","blat"].into_iter().map(|s| String::from(s).into_bytes()).collect();
+        let wbufs = vec!["foo", "bar", "blat"].into_iter().map(|s| String::from(s).into_bytes()).collect();
 
         assert_eq!(io.batched(), 0);
         assert_eq!(io.submitted(), 0);
@@ -583,7 +572,6 @@ mod test {
         let file = tmpfile("foov");
         let ok = io.pwritev(&file, wbufs, 0, 0).is_ok();
         assert!(ok);
-
         while io.batched() > 0 {
             match io.submit() {
                 Err(e) => panic!("submit failed {:?}", e),

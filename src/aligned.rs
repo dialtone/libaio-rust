@@ -1,10 +1,9 @@
 //! Aligned memory buffers for Direct IO.
-extern crate aligned_alloc;
 use std::ptr;
 use std::slice;
 use std::mem;
 
-use buf::{RdBuf, WrBuf};
+use crate::buf::{RdBuf, WrBuf};
 
 /// Allocate and manage buffers with fixed memory alignment.
 ///
@@ -80,7 +79,7 @@ impl AlignedBuf {
     }
 
     pub fn as_slice(&self) -> &[u8] { self.wrbuf() }
-    
+
     pub unsafe fn as_ptr(&self) -> *const u8 {
         self.buf as *const u8
     }

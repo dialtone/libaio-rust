@@ -1,24 +1,20 @@
 [package]
-
 name = "libaio"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Jeremy Fitzhardinge <jeremy@goop.org>"]
 description = "Binding to Linux's async block IO syscalls and libaio"
 readme = "README.md"
 license = "MIT"
+edition = "2018"
 
 [dependencies]
-eventfd = { git = "https://github.com/knutin/eventfd-rust.git" }
+eventfd = { git = "https://github.com/dialtone/eventfd-rust.git", rev="42938a2c05bd" }
+nix = "0.14"
 libc = "*"
 chrono = "0.3.0"
 aligned_alloc = "*"
 futures = "0.1.11"
 bytes = "0.4.1"
-
-[dependencies.nix]
-#git = "https://github.com/nix-rust/nix.git"
-features = [ "eventfd" ]
-version = "0.8.0"
 
 [dev-dependencies]
 tempdir = "*"
