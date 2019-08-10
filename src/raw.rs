@@ -432,6 +432,8 @@ mod test {
     use std::iter;
     use std::io::Write;
     use tempdir::TempDir;
+    use crate::directio::{DirectFile, Mode, FileAccess};
+
 
     #[test]
     fn batch_simple() {
@@ -458,6 +460,15 @@ mod test {
             .truncate(true)
             .open(path).unwrap()
     }
+
+    fn tmpdirectfile(name: &str) -> DirectFile {
+        let tmp = TempDir::new("test").unwrap();
+        let mut path = tmp.into_path();
+
+        path.push(name);
+        DirectFile::open(&path, Mode::Truncate, FileAccess::ReadWrite, 4096).unwrap()
+    }
+
 
     #[test]
     fn raw_simple() {
@@ -571,7 +582,7 @@ mod test {
         assert_eq!(io.submitted(), 0);
         assert_eq!(io.pending(), 0);
 
-        let file = tmpfile("foov");
+        let file = tmpdirectfile("foov");
         let ok = io.pwritev(&file, wbufs, 0, 0).is_ok();
         assert!(ok);
         while io.batched() > 0 {

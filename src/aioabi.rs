@@ -11,23 +11,22 @@ use std::default::Default;
 pub struct Struct_iocb {
     pub data: u64,             // ends up in io_event.data
 
-    pub key: u32,
+    pub key: u32,              // padding, this should be flipped in BE
     pub aio_reserved1: u32,
 
     pub aio_lio_opcode: u16,
-    pub aio_reqprio: u16,
+    pub aio_reqprio: i16,
     pub aio_fildes: u32,
 
     // PREAD/PWRITE -> void *
     // PREADV/PWRITEV -> iovec
     pub aio_buf: u64,
     pub aio_count: u64,        // bytes or iovec entries
-    pub aio_offset: u64,
+    pub aio_offset: i64,
 
     pub aio_reserved2: u64,
 
     pub aio_flags: u32,
-
     pub aio_resfd: u32,
 }
 

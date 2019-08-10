@@ -10,7 +10,7 @@ pub mod directio;
 pub mod aligned;
 
 /// Wrapper for file offset
-pub type Offset = u64;
+pub type Offset = i64;
 
 /// Wrapper for a file descriptor.
 struct FD(RawFd);
