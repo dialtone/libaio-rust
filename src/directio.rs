@@ -40,6 +40,16 @@ pub enum FileAccess {
     ReadWrite,
 }
 
+impl Clone for DirectFile {
+    fn clone(&self) -> Self {
+        DirectFile {
+            fd: FD(self.as_raw_fd()),
+            alignment: self.alignment(),
+        }
+
+    }
+}
+
 impl DirectFile {
     // XXX auto-query directio alignment
     pub fn open<P: AsRef<Path>>(path: P, mode: Mode, fa: FileAccess, alignment: usize) -> io::Result<DirectFile> {
