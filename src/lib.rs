@@ -13,6 +13,7 @@ pub mod aligned;
 pub type Offset = i64;
 
 /// Wrapper for a file descriptor.
+#[derive(Debug)]
 struct FD(RawFd);
 
 impl AsRawFd for FD {

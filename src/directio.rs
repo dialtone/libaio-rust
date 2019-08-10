@@ -10,6 +10,7 @@ use FileAccess::*;
 use super::FD;
 use crate::aligned::AlignedBuf;
 
+#[derive(Debug)]
 pub struct DirectFile {
     fd: FD,
     alignment: usize,
