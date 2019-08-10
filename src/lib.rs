@@ -1,17 +1,11 @@
-extern crate libc;
-extern crate bytes;
-
 pub use buf::{RdBuf,WrBuf};
 use std::os::unix::io::{RawFd, AsRawFd};
-
 
 mod aioabi;
 mod buf;
 mod pool;
 
 pub mod raw;
-//pub mod chan;
-//pub mod future;
 pub mod directio;
 pub mod aligned;
 
@@ -19,15 +13,7 @@ pub mod aligned;
 pub type Offset = u64;
 
 /// Wrapper for a file descriptor.
-#[derive(Debug)]
-pub struct FD(RawFd);
-
-
-impl FD {
-    pub fn new(fd: RawFd) -> FD { FD(fd) }
-}
-
-
+struct FD(RawFd);
 
 impl AsRawFd for FD {
     fn as_raw_fd(&self) -> RawFd {

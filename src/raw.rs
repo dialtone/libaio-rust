@@ -127,18 +127,17 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         }
     }
 
-    pub fn ensure_evfd(&mut self) -> io::Result<()> {
+    // XXX how to make crate-local?
+    #[doc(hidden)]
+    pub fn get_evfd_stream(&mut self) -> Result<Receiver<u64>, io::Error> {
         if self.evfd.is_none() {
             match EventFD::new(0, nix::sys::eventfd::EfdFlags::empty()) {
                 Err(e) => return Err(e),
                 Ok(evfd) => self.evfd = Some(evfd),
             }
-        }
-        Ok(())
-    }
 
-    pub fn get_evfd_stream(&mut self) -> io::Result<Receiver<u64>> {
-        self.ensure_evfd()?;
+        }
+
         Ok(self.evfd.as_ref().unwrap().events())
     }
 
@@ -306,10 +305,15 @@ impl<T: Send, Wb : WrBuf + Send, Rb : RdBuf + Send> Iocontext<T, Wb, Rb> {
         if self.full() {
             Err((bufv, tok))
         } else {
+
             let iov : Vec<_> = (0..bufv.len())
                 .map(|b| aio::Struct_iovec { iov_base: bufv[b].wrbuf().as_ptr() as *mut u8,
                                              iov_len: bufv[b].wrbuf().len() })
                 .collect();
+
+            for b in &bufv {
+                println!("{:?}", b.wrbuf().len());
+            }
 
             let iocb = Iocb {
                 iocb: aio::Struct_iocb {
@@ -429,8 +433,6 @@ mod test {
     use std::io::Write;
     use tempdir::TempDir;
 
-    use crate::pool::Slot;
-
     #[test]
     fn batch_simple() {
         let mut b : Iobatch<usize, Vec<u8>, Vec<u8>> = Iobatch::new(100);
@@ -540,12 +542,12 @@ mod test {
         assert!(io.results(1, 10, Some(Duration::seconds(1))).is_ok());
 
 
-        for (i, slot) in io.batch.iocb.pool.iter().enumerate() {
-            match slot {
-                &Slot::Free(freelist) => println!("slot {} free {}", i, freelist),
-                &Slot::Alloc(_) => println!("slot {} not free", i)
-            }
-        }
+        // for (i, slot) in io.batch.iocb.pool.iter().enumerate() {
+        //     match slot {
+        //         &Slot::Free(freelist) => println!("slot {} free {}", i, freelist),
+        //         &Slot::Alloc(_) => println!("slot {} not free", i)
+        //     }
+        // }
 
 
         assert!(io.pread(&file, rbuf2, 0, 10, 2).is_ok());

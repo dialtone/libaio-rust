@@ -12,8 +12,6 @@ eventfd = { git = "https://github.com/dialtone/eventfd-rust.git", rev="42938a2c0
 nix = "0.14"
 libc = "*"
 chrono = "0.3.0"
-aligned_alloc = "*"
-futures = "0.1.11"
 bytes = "0.4.1"
 
 [dev-dependencies]

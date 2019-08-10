@@ -1,7 +1,7 @@
 //! Aligned memory buffers for Direct IO.
+use std::alloc;
 use std::ptr;
 use std::slice;
-use std::mem;
 
 use crate::buf::{RdBuf, WrBuf};
 
@@ -37,12 +37,12 @@ impl AlignedBuf {
         let sz = (size + align - 1) & !(align - 1);
         assert!(sz >= size);
         assert!(sz % align == 0);
-        let p = aligned_alloc::aligned_alloc(sz, align);
+        let p = alloc::alloc(alloc::Layout::from_size_align(sz, align).unwrap());
 
         if p.is_null() {
             None
         } else {
-            Some(AlignedBuf { buf: mem::transmute(p), len: sz, valid: 0, align: align })
+            Some(AlignedBuf { buf: p, len: sz, valid: 0, align: align })
         }
     }
 
@@ -94,7 +94,7 @@ impl AlignedBuf {
 
 impl Drop for AlignedBuf {
     fn drop(&mut self) {
-        unsafe { aligned_alloc::aligned_free(mem::transmute(self.buf)) }
+        unsafe { alloc::dealloc(self.buf, alloc::Layout::from_size_align(self.len, self.align).unwrap()) }
     }
 }
 

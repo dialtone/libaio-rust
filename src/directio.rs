@@ -1,19 +1,18 @@
 //! Opening files with DirectIO and managing DirectIO buffers
-use libc::{c_uint, c_void};
+use libc::{c_void, c_uint};
 
 use std::path::Path;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::io;
-
-use super::FD;
-use crate::aligned::AlignedBuf;
 use Mode::*;
 use FileAccess::*;
 
-#[derive(Debug)]
+use super::FD;
+use crate::aligned::AlignedBuf;
+
 pub struct DirectFile {
-    pub fd: FD,
-    pub alignment: usize,
+    fd: FD,
+    alignment: usize,
 }
 
 const O_DIRECT: i32 = 0x4000;   // Linux
@@ -97,7 +96,6 @@ impl AsRawFd for DirectFile {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
     use super::DirectFile;
     use super::Mode::*;
     use super::FileAccess::*;

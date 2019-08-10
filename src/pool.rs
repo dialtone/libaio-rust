@@ -1,5 +1,3 @@
-extern crate std;
-
 use std::ops::{Index,IndexMut};
 
 pub enum Slot<T> {
@@ -10,9 +8,8 @@ pub enum Slot<T> {
 /// Simple fixed size pool allocator.
 pub struct Pool<T> {
     pub pool: Vec<Slot<T>>,
-    freelist: isize,
+    freelist: usize,
     used: usize,
-    next: usize
 }
 
 impl<T> Pool<T> {
@@ -20,19 +17,19 @@ impl<T> Pool<T> {
     pub fn new(size: usize) -> Pool<T> {
         assert!(size > 0);
         Pool { pool: (1 .. size + 1).map(Slot::Free).collect(),
-               freelist: (size - 1) as isize,
-               used: 0,
-               next: 0 }
+               freelist: 0,
+               used: 0 }
     }
 
     /// Allocate an index in the pool. Returns None if the Pool is all used.
     pub fn allocidx(&mut self, init: T) -> Result<usize, T> {
-        let idx = self.next;
+        let idx = self.freelist;
+
         if idx >= self.pool.len() {
             Err(init)
         } else {
-            self.next = match self.pool[idx] {
-                Slot::Free(next) => next,
+            self.freelist = match self.pool[idx] {
+                Slot::Free(fl) => fl,
                 Slot::Alloc(_) => panic!("Pool slot already contains a value")
             };
             self.pool[idx] = Slot::Alloc(init);
@@ -44,11 +41,11 @@ impl<T> Pool<T> {
     /// Free an index in the pool
     pub fn freeidx(&mut self, idx: usize) -> T {
         assert!(idx < self.pool.len());
-        let next = self.next;
-        self.used -= 1;
-        match std::mem::replace(&mut self.pool[idx], Slot::Free(next)) {
+        let fl = self.freelist;
+        match std::mem::replace(&mut self.pool[idx], Slot::Free(fl)) {
             Slot::Alloc(v) => {
-                self.next = idx;
+                self.used -= 1;
+                self.freelist = idx;
                 v
             },
             Slot::Free(_) => panic!("Freeing free entry {}", idx)
@@ -98,16 +95,7 @@ impl<T> IndexMut<usize> for Pool<T> {
 
 #[cfg(test)]
 mod test {
-    use super::{Pool, Slot};
-
-    fn print(p: &Pool<i32>) {
-        for (i, slot) in p.pool.iter().enumerate() {
-            match slot {
-                &Slot::Free(freelist) => println!("slot {} free {}", i, freelist),
-                &Slot::Alloc(v) => println!("slot {} value {:?}", i, v)
-            }
-        }
-    }
+    use super::Pool;
 
     #[test]
     fn alloc() {
@@ -131,7 +119,6 @@ mod test {
         assert!(idx.is_err());
     }
 
-
     #[test]
     fn reuse_slot() {
         let mut p = Pool::new(3);
@@ -141,7 +128,6 @@ mod test {
         assert_eq!(Ok(0), p.allocidx(2));
         assert_eq!(2, p.freeidx(0));
     }
-
 
     #[test]
     fn free() {
