@@ -3,7 +3,7 @@
 //! This module represents pending AIO as a Future of the IO result.
 extern crate std;
 
-use future::Future;
+use std::sync::Future;
 use std::io;
 use std::os::unix::io::AsRawFd;
 
@@ -174,6 +174,6 @@ mod test {
         match r.into_inner() {
             (Ok(sz), rb) => { assert_eq!(sz, 40); assert_eq!(rb[0 .. 40], wb2.as_slice()) },
             (Err(e), _) => panic!("read failed {}", e),
-        }        
+        }
     }
 }
