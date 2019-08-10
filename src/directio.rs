@@ -10,7 +10,7 @@ use FileAccess::*;
 use super::FD;
 use crate::aligned::AlignedBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct DirectFile {
     fd: FD,
     alignment: usize,
@@ -38,16 +38,6 @@ pub enum FileAccess {
     Read,
     Write,
     ReadWrite,
-}
-
-impl Clone for DirectFile {
-    fn clone(&self) -> Self {
-        DirectFile {
-            fd: FD(self.as_raw_fd()),
-            alignment: self.alignment(),
-        }
-
-    }
 }
 
 impl DirectFile {
